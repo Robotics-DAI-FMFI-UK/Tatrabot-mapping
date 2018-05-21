@@ -4,12 +4,21 @@
 static int16_t sn[16][16];
 static int16_t so[16][16];
 
+static int16_t map[16][16];
+static int16_t visited[16][16];
+
 static int8_t robot_row, robot_col;
 static int8_t dx, dy;
 
 #define SHOW_THE_ROBOT 1
 #define DO_NOT_SHOW_THE_ROBOT 0
 
+
+static void init_fake_map(void)
+{
+  map[8][5] = 1;
+  map[8][4] = 1;
+}
 
 static void follow_line_to_crossing(int rotations, int measuring)
 {
@@ -165,6 +174,7 @@ static void left(void){
 #define KEY_FUN 'f'
 #define KEY_PRINT 'p'
 #define KEY_MEASURE 'm'
+#define KEY_TRAVEL 't'
 
 
 #define KEY_READ_DISTANCE  'r'
@@ -204,7 +214,6 @@ int getDistanceUnit(void)
   return countA;
 }
 
-#define car_shift 2.0
 #define box_width 12.5
 #define cone_spread 15.2
 #define half_box_width (box_width / 2)
@@ -220,7 +229,7 @@ float calculate_distance_right(float x, float y)
 {
   float a = 100 / (cone_spread - 101);
   float b = -1 - 100 / (cone_spread - 101);
-  chprintf(BT, "X: %d || Y: %d \n\r", (long) (10000 * x), (long) (10000 * y));
+//  chprintf(BT, "X: %d || Y: %d \n\r", (long) (10000 * x), (long) (10000 * y));
   return a*x + b*y + 1;
 }
 
@@ -232,40 +241,97 @@ int is_in_cone(float x, float y)
   return line_value_left <= 0 && line_value_right >= 0;
 }
 
+int overfill_cone(float x, float y)
+{
+  float line_value_left = calculate_distance_left(x, y);
+  float line_value_right = calculate_distance_right(x + box_width, y);
+//  chprintf(BT, "LEFT: %d || RIGHT: %d \n\r", (int) (1000 * line_value_left), (int) (1000 * line_value_right));
+  return line_value_left > 0 && line_value_right < 0;
+}
+
+// indexy su X, Y
+float sensor_shifts[3][2] = {{-1            , box_width - 1},
+                             {-5            , 2*box_width - 7},
+                             {5 - box_width , box_width - 4}};
+
+void sensor_vector(int sensor, int *sdx, int *sdy)
+{
+  switch (sensor) {
+    case 0:
+      *sdx = dx;
+      *sdy = dy;
+      break;
+    case 1:
+      *sdx = -dy;
+      *sdy = dx;
+      break;
+    case 2:
+      *sdx = dy;
+      *sdy = -dx;
+      break;
+  }
+}
+
 void update_boxes_unseen_with_delta(int sensor, int distance, int delta_r)
 {
-  int delta_row = 1;
-  for (float d = box_width + half_box_width; d < distance; d += box_width, delta_row++) {
-      int in_cone = 1;
-      int r = ((delta_r == -1) ? -1  : 0);
-      while (in_cone) {
-         float x = -car_shift + r * box_width + 1;
-         float y = d + 1 - half_box_width;
-         if (!is_in_cone(x, y) && !is_in_cone(x + box_width, y)) {
-           in_cone = false;
-         } else {
-           sn[robot_row - delta_row][robot_col + r] += 1;
-         }
-         r += delta_r;
+  int sdx, sdy;
+  sensor_vector(sensor, &sdx, &sdy);
+  int sdx90, sdy90;
+  sdx90 = -sdy;
+  sdy90 = sdx;
+  int delta = 1;
+//  chprintf(BT, "----------sensor: %d, distance: %d, delta_r: %d\n\r", sensor, distance, delta_r);
+
+  for (float d = 0; d <= distance - box_width; d += box_width, delta++) {
+    int in_cone = 1;
+    int r = ((delta_r == -1) ? -1  : 0);
+    while (in_cone) {
+      float x = r*box_width + sensor_shifts[sensor][0];
+      float y = d + sensor_shifts[sensor][1];
+      if (!is_in_cone(x, y) && !is_in_cone(x + box_width, y)) {
+        in_cone = 0;
+      } else {
+        int vertex_row = robot_row + (sdy * delta + sdy90 * r);
+        int vertex_col = robot_col + (sdx * delta + sdx90 * r);
+//        chprintf(BT, "%d,%d\n\r", vertex_row, vertex_col);
+
+        if (vertex_row >= 0 && vertex_row <= 15 && vertex_col >= 0 && vertex_col <= 15) {
+          sn[vertex_row][vertex_col] += 1;
+        } else {
+          in_cone = 0;
+        }
       }
+      r += delta_r;
     }
+  }
 }
 
 void update_boxes_seen_with_delta(int sensor, int distance, int delta_r)
 {
-  int delta_row = ((int) (distance / box_width)) + 1;
-  float d = delta_row * delta_row + half_box_width;
+  int sdx, sdy;
+  sensor_vector(sensor, &sdx, &sdy);
+  int sdx90, sdy90;
+  sdx90 = -sdy;
+  sdy90 = sdx;
+  int delta = ((int) (distance / box_width)) + 1;
   int in_cone = 1;
   int r = ((delta_r == -1) ? -1  : 0);
   while (in_cone) {
-     float x = -car_shift + r * box_width + 1; // TODO car_shift bude iny na zaklade otocenia
-     float y = d + 1 - half_box_width; // TODO 1 bude iny na zaklade otocenia
-     if (!is_in_cone(x, y) && !is_in_cone(x + box_width, y)) {
-       in_cone = false;
-     } else {
-       so[robot_row - delta_row][robot_col + r] += 1; // TODO tu sa bude +- delta_row a +- r podla otocenia robota a sensoru
-     }
-     r += delta_r;
+    float x = r*box_width + sensor_shifts[sensor][0];
+    float y = (delta - 1) * box_width + sensor_shifts[sensor][1];
+    if (!overfill_cone(x, y) && !is_in_cone(x, y) && !is_in_cone(x + box_width, y)) {
+      in_cone = 0;
+//      chprintf(BT, "DONE X:%d Y:%d\n\r", (int) (10000 * x), (int) (10000 * y));
+    } else {
+      int vertex_row = robot_row + (sdy * delta + sdy90 * r);
+      int vertex_col = robot_col + (sdx * delta + sdx90 * r);
+      if (vertex_row >= 0 && vertex_row <= 15 && vertex_col >= 0 && vertex_col <= 15) {
+        so[vertex_row][vertex_col] += 1;
+      } else {
+        in_cone = 0;
+      }
+    }
+    r += delta_r;
   }
 }
 
@@ -284,14 +350,13 @@ void update_boxes_seen(int sensor, int distance)
 // pri vzdialenosti 100 CM, od stredu vidi do cone s odchylkou 15 CM do oboch stran
 void sense(void)
 {
-  for(int i=1; i < 4; i++){
+  for(int i = 0; i < 3; i++){
     int sense_temp = measure_distance(i);
     if (sense_temp != 1000){
       update_boxes_seen(i, sense_temp);
       update_boxes_unseen(i, sense_temp);
     } else{
       update_boxes_unseen(i, 200);
-
     }
   }
 }
@@ -372,6 +437,36 @@ void measure(void)
   sense();
 }
 
+void navigate_to(int drow, int dcol)
+{
+  // travel from location robot_row, robot_col with heading dx,dy
+
+  //  to location drow, dcol, avoiding non-zero elements in map[][]
+  for (int row = 0; row < 16; row++)
+     for (int col = 0; col < 16; col++)
+        visited[row][col] = 0;
+
+  int r = robot_row;
+  int c = robot_col;
+
+/*
+  while ((r != drow) || (c != dcol))
+  {
+    visited[r][c] = 1;  // 1 = decrease row, 2 = increase col, 3 = decrease col, 4 = increase row
+    if ()
+  }
+
+  for (int row = 0; row < 16; row++)
+    {
+      for (int col = 0; col < 16; col++)
+      {
+         robot_row
+         robot_col
+      }
+
+    }
+  if*/
+}
 
 void processKey(char key)
 {
@@ -402,6 +497,19 @@ void processKey(char key)
     case KEY_FUN:
       fun();
       break;
+    case KEY_TRAVEL:
+      chprintf(BT, " Current location: [%d,%d]  heading: dx=%d, dy=%d!\n\r", robot_col, robot_row, dx, dy);
+      chprintf(BT, " Enter Destination: col=");
+      int dcol = readKey() - '0';
+      chprintf(BT, "%d row=", dcol);
+      int drow = readKey() - '0';
+      chprintf(BT, "%d\n\r", drow);
+      navigate_to(drow, dcol);
+      break;
+
+
+
+
     default:
       chprintf(BT, "Unknown key %c \n\r", key);
       break;
@@ -449,7 +557,7 @@ int main(void)
 
   while(true)
   {
-    chprintf(PC, "1: %d || 2: %d || 3: %d\n\r", measure_distance(1), measure_distance(2), measure_distance(3) );
+    chprintf(PC, "1: %d || 2: %d || 3: %d\n\r", measure_distance(0), measure_distance(1), measure_distance(2) );
     chprintf(PC, "%d ", tatra_clock);
     setLED(0, 1);
     chThdSleepMilliseconds(100);

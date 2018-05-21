@@ -738,19 +738,19 @@ static volatile uint32_t measurement_start;
 
 uint16_t measure_distance(int sensor_num)
 {
-  if (sensor_num == 1){
+  if (sensor_num == 0){
     measure_ultrasonic = 1;
     while (measure_ultrasonic != 5);
     measure_ultrasonic = 0;
     return ultrasonic_distance;
   }
-  if (sensor_num == 2){
+  if (sensor_num == 1){
     measure_ultrasonic = 7;
     while (measure_ultrasonic != 11);
     measure_ultrasonic = 0;
     return ultrasonic_distance;
   }
-  if (sensor_num == 3){
+  if (sensor_num == 2){
     measure_ultrasonic = 13;
     while (measure_ultrasonic != 17);
     measure_ultrasonic = 0;
