@@ -736,26 +736,42 @@ static volatile uint32_t measurement_start;
 // trigger 4(2) , 8(3) , 13(1)
 // echo 7(2) , 5(3) , 12(1)
 
+uint8_t wait_for_ultrasonic_idle(void)
+{
+  uint32_t start_clock = tatra_clock;
+  uint32_t current_clock = tatra_clock;
+  while (measure_ultrasonic != 5 && measure_ultrasonic != 11 &&
+         measure_ultrasonic != 17 && measure_ultrasonic != 0 &&
+         current_clock - start_clock < 1500) {
+    current_clock = tatra_clock;
+  }
+  return tatra_clock - current_clock < 1500;
+}
+
 uint16_t measure_distance(int sensor_num)
 {
-  if (sensor_num == 0){
+  wait_for_ultrasonic_idle();
+
+  if (sensor_num == 0) {
     measure_ultrasonic = 1;
-    while (measure_ultrasonic != 5);
-    measure_ultrasonic = 0;
-    return ultrasonic_distance;
-  }
-  if (sensor_num == 1){
+    if (wait_for_ultrasonic_idle()) {
+      measure_ultrasonic = 0;
+      return ultrasonic_distance;
+    }
+  } else if (sensor_num == 1) {
     measure_ultrasonic = 7;
-    while (measure_ultrasonic != 11);
-    measure_ultrasonic = 0;
-    return ultrasonic_distance;
-  }
-  if (sensor_num == 2){
+    if (wait_for_ultrasonic_idle()) {
+      measure_ultrasonic = 0;
+      return ultrasonic_distance;
+    }
+  } else if (sensor_num == 2) {
     measure_ultrasonic = 13;
-    while (measure_ultrasonic != 17);
-    measure_ultrasonic = 0;
-    return ultrasonic_distance;
+    if (wait_for_ultrasonic_idle()) {
+      measure_ultrasonic = 0;
+      return ultrasonic_distance;
+    }
   }
+  measure_ultrasonic = 0;
   return 1000;
 }
 
@@ -889,9 +905,6 @@ static void tatra_clock_output_callback(GPTDriver *gptp)
         measure_ultrasonic = 17;
       }
     }
-
-
-
 }
 
 static GPTConfig tatra_clock_cfg =
