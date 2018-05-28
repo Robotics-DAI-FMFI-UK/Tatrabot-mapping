@@ -111,7 +111,7 @@ void tatrabotInit(void);
 // otherwise returns that byte
 char keyPressed(BaseSequentialStream *term);
 
-// clock that is incremented automatically by timer every 20 usec,
+// clock that is incremented automatically by timer every 10 usec,
 //  overflows after 23,860929422... hours
 extern volatile uint32_t tatra_clock;
 
