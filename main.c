@@ -740,26 +740,14 @@ void execute_plan(void)
       visited[row][col] = 0;
   }
 
-  while (true) {
-    if (is_on_the_plan(robot_row - 1, robot_col) && not_visited(robot_row - 1, robot_col)) {
-      visited[robot_row - 1][robot_col] = 1;
-      perform_movement(-1, 0);
-      // chod zo svojej polohy po mape HORE
-    } else if (is_on_the_plan(robot_row + 1, robot_col) && not_visited(robot_row + 1, robot_col)) {
-      visited[robot_row + 1][robot_col] = 1;
-      perform_movement(1, 0);
-      // chod zo svojej polohy po mape DOLE
-    } else if (is_on_the_plan(robot_row, robot_col - 1) && not_visited(robot_row, robot_col - 1)) {
-      visited[robot_row][robot_col - 1] = 1;
-      perform_movement(0, -1);
-      // chod zo svojej polohy po mape DOLAVA
-    } else if (is_on_the_plan(robot_row, robot_col + 1) && not_visited(robot_row, robot_col + 1)) {
-      visited[robot_row][robot_col + 1] = 1;
-      perform_movement(0, 1);
-      // chod zo svojej polohy po mape DOPRAVA
-    } else {
-      break;
-    }
+  int next_row, next_col, ddy, ddx;
+  for (int i = 0; i < plan_length; i++) {
+    next_row = plan_row[i];
+    next_col = plan_col[i];
+
+    ddy = next_row - robot_row;
+    ddx = next_col - robot_col;
+    perform_movement(ddy, ddx);
   }
 }
 
