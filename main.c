@@ -724,22 +724,8 @@ void perform_movement(int ddy, int ddx){
   forward();
 }
 
-int not_visited(int r, int c)
-{
-  if (r < 0 || r >= 17 || c < 0 || c >= 17) {
-    return 0;
-  }
-  return !visited[r][c];
-}
-
 void execute_plan(void)
 {
-  for (int row = 0; row < 16; row++)
-  {
-    for (int col = 0; col < 16; col++)
-      visited[row][col] = 0;
-  }
-
   int next_row, next_col, ddy, ddx;
   for (int i = 0; i < plan_length; i++) {
     next_row = plan_row[i];
