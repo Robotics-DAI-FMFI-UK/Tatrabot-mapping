@@ -674,61 +674,53 @@ int create_plan(int drow, int dcol)
    return 1;
 }
 
-void perform_movement(int ddy, int ddx)
+#define MOVE_STAY  0
+#define MOVE_RIGHT 1
+#define MOVE_LEFT  2
+#define MOVE_BACK  3
+
+#define INDEX_UP    0
+#define INDEX_DOWN  1
+#define INDEX_LEFT  2
+#define INDEX_RIGHT 3
+
+int direction_correction[4][4] = {
+  {MOVE_STAY,  MOVE_BACK,  MOVE_LEFT,  MOVE_RIGHT },  // Sme otoceny hore
+  {MOVE_BACK,  MOVE_STAY,  MOVE_RIGHT, MOVE_LEFT  },  // Sme otecny dole
+  {MOVE_RIGHT, MOVE_LEFT,  MOVE_STAY,  MOVE_BACK  },  // Sme otoceny dolava
+  {MOVE_LEFT,  MOVE_RIGHT, MOVE_BACK,  MOVE_STAY  }   // Sme otoceny doprava
+};
+// pohyb smerom hore | Pohyb smerom dole | Pohyb smerom dolava |pohyb smerom doprava
+
+int get_move_direction(int y, int x) {
+  if (y < 0) return INDEX_UP;
+  if (y > 0) return INDEX_DOWN;
+  if (x < 0) return INDEX_LEFT;
+  return INDEX_RIGHT;
+}
+
+void correct_position_for_movement(int move)
 {
-  if (dx == 0) {
-    if (dy < 0) {
-      // Hore
-      if (ddy == 1) {
-        left();
-        left();
-      } else if (ddy == -1) {
-        // OK
-      } else if (ddx == 1) {
-        right();
-      } else if (ddx == -1) {
-        left();
-      }
-    } else {
-      // Dole
-      if (ddy == 1) {
-        // OK
-      } else if (ddy == -1) {
-        left();
-        left();
-      } else if (ddx == 1) {
-        left();
-      } else if (ddx == -1) {
-        right();
-      }
-    }
-  } else {
-    if (dx < 0) {
-      // Dolava
-      if (ddy == 1) {
-        right();
-      } else if (ddy == -1) {
-        left();
-      } else if (ddx == 1) {
-        left();
-        left();
-      } else if (ddx == -1) {
-        // OK
-      }
-    } else {
-      // Doprava
-      if (ddy == 1) {
-        left();
-      } else if (ddy == -1) {
-        right();
-      } else if (ddx == 1) {
-        // OK
-      } else if (ddx == -1) {
-        left();
-        left();
-      }
-    }
+  switch (move) {
+    case MOVE_BACK:
+      right();
+    case MOVE_RIGHT:
+      right();
+      break;
+    case MOVE_LEFT:
+      left();
+    default:
+      break;
   }
+}
+
+void perform_movement(int ddy, int ddx){
+  int row = get_move_direction(dy, dx);
+  int col = get_move_direction(ddy, ddx);
+
+  int move = direction_correction[row][col];
+  correct_position_for_movement(move);
+
   forward();
 }
 
