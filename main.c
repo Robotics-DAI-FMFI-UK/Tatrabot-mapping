@@ -684,15 +684,14 @@ int create_plan(int drow, int dcol)
 #define INDEX_LEFT  2
 #define INDEX_RIGHT 3
 
-int direction_correction[4][4] = {
-  {MOVE_STAY,  MOVE_BACK,  MOVE_LEFT,  MOVE_RIGHT },  // Sme otoceny hore
-  {MOVE_BACK,  MOVE_STAY,  MOVE_RIGHT, MOVE_LEFT  },  // Sme otecny dole
-  {MOVE_RIGHT, MOVE_LEFT,  MOVE_STAY,  MOVE_BACK  },  // Sme otoceny dolava
-  {MOVE_LEFT,  MOVE_RIGHT, MOVE_BACK,  MOVE_STAY  }   // Sme otoceny doprava
+int direction_corrections[4][4] = {
+  {MOVE_STAY,  MOVE_BACK,  MOVE_LEFT,  MOVE_RIGHT },
+  {MOVE_BACK,  MOVE_STAY,  MOVE_RIGHT, MOVE_LEFT  },
+  {MOVE_RIGHT, MOVE_LEFT,  MOVE_STAY,  MOVE_BACK  },
+  {MOVE_LEFT,  MOVE_RIGHT, MOVE_BACK,  MOVE_STAY  }
 };
-// pohyb smerom hore | Pohyb smerom dole | Pohyb smerom dolava |pohyb smerom doprava
 
-int get_move_direction(int y, int x) {
+int get_move_direction_index(int y, int x) {
   if (y < 0) return INDEX_UP;
   if (y > 0) return INDEX_DOWN;
   if (x < 0) return INDEX_LEFT;
@@ -715,10 +714,10 @@ void correct_position_for_movement(int move)
 }
 
 void perform_movement(int ddy, int ddx){
-  int row = get_move_direction(dy, dx);
-  int col = get_move_direction(ddy, ddx);
+  int row = get_move_direction_index(dy, dx);
+  int col = get_move_direction_index(ddy, ddx);
 
-  int move = direction_correction[row][col];
+  int move = direction_corrections[row][col];
   correct_position_for_movement(move);
 
   forward();
