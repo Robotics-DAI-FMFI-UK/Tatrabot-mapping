@@ -674,100 +674,65 @@ int create_plan(int drow, int dcol)
    return 1;
 }
 
-void perform_movement(int ddy, int ddx)
-{
-  if (dx == 0) {
-    if (dy < 0) {
-      // Hore
-      if (ddy == 1) {
-        left();
-        left();
-      } else if (ddy == -1) {
-        // OK
-      } else if (ddx == 1) {
-        right();
-      } else if (ddx == -1) {
-        left();
-      }
-    } else {
-      // Dole
-      if (ddy == 1) {
-        // OK
-      } else if (ddy == -1) {
-        left();
-        left();
-      } else if (ddx == 1) {
-        left();
-      } else if (ddx == -1) {
-        right();
-      }
-    }
-  } else {
-    if (dx < 0) {
-      // Dolava
-      if (ddy == 1) {
-        right();
-      } else if (ddy == -1) {
-        left();
-      } else if (ddx == 1) {
-        left();
-        left();
-      } else if (ddx == -1) {
-        // OK
-      }
-    } else {
-      // Doprava
-      if (ddy == 1) {
-        left();
-      } else if (ddy == -1) {
-        right();
-      } else if (ddx == 1) {
-        // OK
-      } else if (ddx == -1) {
-        left();
-        left();
-      }
-    }
-  }
-  forward();
+#define MOVE_STAY  0
+#define MOVE_RIGHT 1
+#define MOVE_LEFT  2
+#define MOVE_BACK  3
+
+#define INDEX_UP    0
+#define INDEX_DOWN  1
+#define INDEX_LEFT  2
+#define INDEX_RIGHT 3
+
+int direction_corrections[4][4] = {
+  {MOVE_STAY,  MOVE_BACK,  MOVE_LEFT,  MOVE_RIGHT },
+  {MOVE_BACK,  MOVE_STAY,  MOVE_RIGHT, MOVE_LEFT  },
+  {MOVE_RIGHT, MOVE_LEFT,  MOVE_STAY,  MOVE_BACK  },
+  {MOVE_LEFT,  MOVE_RIGHT, MOVE_BACK,  MOVE_STAY  }
+};
+
+int get_move_direction_index(int y, int x) {
+  if (y < 0) return INDEX_UP;
+  if (y > 0) return INDEX_DOWN;
+  if (x < 0) return INDEX_LEFT;
+  return INDEX_RIGHT;
 }
 
-int not_visited(int r, int c)
+void correct_position_for_movement(int move)
 {
-  if (r < 0 || r >= 17 || c < 0 || c >= 17) {
-    return 0;
+  switch (move) {
+    case MOVE_BACK:
+      right();
+    case MOVE_RIGHT:
+      right();
+      break;
+    case MOVE_LEFT:
+      left();
+    default:
+      break;
   }
-  return !visited[r][c];
+}
+
+void perform_movement(int ddy, int ddx){
+  int row = get_move_direction_index(dy, dx);
+  int col = get_move_direction_index(ddy, ddx);
+
+  int move = direction_corrections[row][col];
+  correct_position_for_movement(move);
+
+  forward();
 }
 
 void execute_plan(void)
 {
-  for (int row = 0; row < 16; row++)
-  {
-    for (int col = 0; col < 16; col++)
-      visited[row][col] = 0;
-  }
+  int next_row, next_col, ddy, ddx;
+  for (int i = 0; i < plan_length; i++) {
+    next_row = plan_row[i];
+    next_col = plan_col[i];
 
-  while (true) {
-    if (is_on_the_plan(robot_row - 1, robot_col) && not_visited(robot_row - 1, robot_col)) {
-      visited[robot_row - 1][robot_col] = 1;
-      perform_movement(-1, 0);
-      // chod zo svojej polohy po mape HORE
-    } else if (is_on_the_plan(robot_row + 1, robot_col) && not_visited(robot_row + 1, robot_col)) {
-      visited[robot_row + 1][robot_col] = 1;
-      perform_movement(1, 0);
-      // chod zo svojej polohy po mape DOLE
-    } else if (is_on_the_plan(robot_row, robot_col - 1) && not_visited(robot_row, robot_col - 1)) {
-      visited[robot_row][robot_col - 1] = 1;
-      perform_movement(0, -1);
-      // chod zo svojej polohy po mape DOLAVA
-    } else if (is_on_the_plan(robot_row, robot_col + 1) && not_visited(robot_row, robot_col + 1)) {
-      visited[robot_row][robot_col + 1] = 1;
-      perform_movement(0, 1);
-      // chod zo svojej polohy po mape DOPRAVA
-    } else {
-      break;
-    }
+    ddy = next_row - robot_row;
+    ddx = next_col - robot_col;
+    perform_movement(ddy, ddx);
   }
 }
 
